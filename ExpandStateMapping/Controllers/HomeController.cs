@@ -132,8 +132,7 @@ namespace SyncfusionAngularASPNETMVC.Controllers
             DataOperations operation = new DataOperations();
             foreach (var Child in ChildRecords)
             {
-                //if (ParentValue.IsExpanded)
-                //{
+               
                 string ParentId = Child.ParentValue.ToString();
                 if (TaskId == ParentId)
                 {
@@ -168,18 +167,8 @@ namespace SyncfusionAngularASPNETMVC.Controllers
                             {
                                 index += DeepChildRecords.Count;
                             }
-                            //else
-                            //{
-                            //    Child.isParent = true;
-                            //    index += DeepChildRecords.Count;
-                            //}
                         }
-                        //}
-                        //else
-                        //{
-                        //    Child.isParent = false;
-                        //}
-                    }
+                     }
                 }
             }
 
