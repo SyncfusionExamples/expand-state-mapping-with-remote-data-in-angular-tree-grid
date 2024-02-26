@@ -1,4 +1,4 @@
-﻿using Syncfusion.EJ2.Base;
+using Syncfusion.EJ2.Base;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -132,7 +132,6 @@ namespace SyncfusionAngularASPNETMVC.Controllers
             DataOperations operation = new DataOperations();
             foreach (var Child in ChildRecords)
             {
-               
                 string ParentId = Child.ParentValue.ToString();
                 if (TaskId == ParentId)
                 {
@@ -167,8 +166,9 @@ namespace SyncfusionAngularASPNETMVC.Controllers
                             {
                                 index += DeepChildRecords.Count;
                             }
-                        }
-                     }
+                          }
+                        
+                    }
                 }
             }
 
