@@ -19,5 +19,5 @@ export class AppComponent {
     adaptor: new UrlAdaptor,
     url: "Home/Datasource",
   });
-  public pagesettings = { pageSize: 12,pageSizeMode:'Root' };
+  public pagesettings = { pageSize: 11,pageSizeMode:'Root' };
 }
