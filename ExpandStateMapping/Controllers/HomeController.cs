@@ -1,4 +1,4 @@
-﻿using Syncfusion.EJ2.Base;
+using Syncfusion.EJ2.Base;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -17,18 +17,23 @@ namespace SyncfusionAngularASPNETMVC.Controllers
         public ActionResult DataSource(DataManagerRequest dm)
         {
             List<TreeData> data = new List<TreeData>();
-            data = TreeData.GetTree();
-            DataOperations operation = new DataOperations();
-            IEnumerable<TreeData> DataSource = data;
-            if (dm.Expand != null && dm.Expand[0] == "CollapsingAction") // setting the ExpandStateMapping property whether is true or false
+            if (data.Count == 0)
             {
-                var val = TreeData.GetTree().Where(ds => ds.TaskID == int.Parse(dm.Expand[1])).FirstOrDefault();
-                val.IsExpanded = false;
+                Session["data1"] = TreeData.GetTree();
             }
-            else if (dm.Expand != null && dm.Expand[0] == "ExpandingAction")
+            data = (List<TreeData>)Session["data1"];
+            DataOperations operation = new DataOperations();
+            IEnumerable<TreeData> DataSource = (IEnumerable<TreeData>)Session["data1"];
+            List<TreeData> ExpandedParentRecords = new List<TreeData>();
+            if (dm.Expand != null && dm.Expand[0] == "ExpandingAction") // setting the ExpandStateMapping property whether is true or false
             {
                 var val = TreeData.GetTree().Where(ds => ds.TaskID == int.Parse(dm.Expand[1])).FirstOrDefault();
                 val.IsExpanded = true;
+            }
+            else if (dm.Expand != null && dm.Expand[0] == "CollapsingAction")
+            {
+                var val = TreeData.GetTree().Where(ds => ds.TaskID == int.Parse(dm.Expand[1])).FirstOrDefault();
+                val.IsExpanded = false;
             }
             if (!(dm.Where != null && dm.Where.Count > 1))
             {
@@ -50,16 +55,21 @@ namespace SyncfusionAngularASPNETMVC.Controllers
             data = new List<TreeData>();
             foreach (var rec in DataSource)
             {
+                //Here retained the expanded and collapsed state of parent rows
+                if (rec.IsExpanded)
+                {
+                    ExpandedParentRecords.Add(rec as TreeData); // saving the expanded parent records
+                }
                 data.Add(rec as TreeData);
             }
             var GroupData = TreeData.GetTree().ToList().GroupBy(rec => rec.ParentValue)
                                 .Where(g => g.Key != null).ToDictionary(g => g.Key?.ToString(), g => g.ToList());
-            foreach (var Record in data.ToList())
+            if (ExpandedParentRecords.Count > 0)
             {
-                if (GroupData.ContainsKey(Record.TaskID.ToString()))
+                foreach (var Record in ExpandedParentRecords.ToList())
                 {
                     var ChildGroup = GroupData[Record.TaskID.ToString()];
-                    if (dm.Sorted != null && dm.Sorted.Count > 0 && dm.Sorted[0].Name != null) // Sorting the child records
+                    if (dm.Sorted != null && dm.Sorted.Count > 0 && dm.Sorted[0].Name != null) // sorting the child records
                     {
                         IEnumerable ChildSort = ChildGroup;
                         ChildSort = operation.PerformSorting(ChildSort, dm.Sorted);
@@ -69,7 +79,7 @@ namespace SyncfusionAngularASPNETMVC.Controllers
                             ChildGroup.Add(rec as TreeData);
                         }
                     }
-                    if (dm.Search != null && dm.Search.Count > 0) // Searching the child records
+                    if (dm.Search != null && dm.Search.Count > 0) // searching the child records
                     {
                         IEnumerable ChildSearch = ChildGroup;
                         ChildSearch = operation.PerformSearching(ChildSearch, dm.Search);
@@ -79,8 +89,7 @@ namespace SyncfusionAngularASPNETMVC.Controllers
                             ChildGroup.Add(rec as TreeData);
                         }
                     }
-                    if (ChildGroup?.Count > 0)
-                        AppendChildren(dm, ChildGroup, Record, GroupData, data);
+                    AppendChildren(dm, ChildGroup, Record, GroupData, data);
                 }
             }
             DataSource = data;
@@ -123,45 +132,42 @@ namespace SyncfusionAngularASPNETMVC.Controllers
             DataOperations operation = new DataOperations();
             foreach (var Child in ChildRecords)
             {
-                //Based on the provided condition, the child records are retained and the value is passed from the server to the client.
-                if (ParentValue.IsExpanded)
+                string ParentId = Child.ParentValue.ToString();
+                if (TaskId == ParentId)
                 {
-                    string ParentId = Child.ParentValue.ToString();
-                    if (TaskId == ParentId)
+                    ((IList)data).Insert(++index, Child);
+                    if (GroupData.ContainsKey(Child.TaskID.ToString()))
                     {
-                        ((IList)data).Insert(++index, Child);
-                        if (GroupData.ContainsKey(Child.TaskID.ToString()))
+                        var DeepChildRecords = GroupData[Child.TaskID.ToString()];
+                        if (DeepChildRecords?.Count > 0)
                         {
-                            var DeepChildRecords = GroupData[Child.TaskID.ToString()];
-                            if (DeepChildRecords?.Count > 0)
+                            if (dm.Sorted != null && dm.Sorted.Count > 0 && dm.Sorted[0].Name != null) // sorting the child records
                             {
-                                if (dm.Sorted != null && dm.Sorted.Count > 0 && dm.Sorted[0].Name != null) // sorting the child records
+                                IEnumerable ChildSort = DeepChildRecords;
+                                ChildSort = operation.PerformSorting(ChildSort, dm.Sorted);
+                                DeepChildRecords = new List<TreeData>();
+                                foreach (var rec in ChildSort)
                                 {
-                                    IEnumerable ChildSort = DeepChildRecords;
-                                    ChildSort = operation.PerformSorting(ChildSort, dm.Sorted);
-                                    DeepChildRecords = new List<TreeData>();
-                                    foreach (var rec in ChildSort)
-                                    {
-                                        DeepChildRecords.Add(rec as TreeData);
-                                    }
-                                }
-                                if (dm.Search != null && dm.Search.Count > 0) // searching the child records
-                                {
-                                    IEnumerable ChildSearch = DeepChildRecords;
-                                    ChildSearch = operation.PerformSearching(ChildSearch, dm.Search);
-                                    DeepChildRecords = new List<TreeData>();
-                                    foreach (var rec in ChildSearch)
-                                    {
-                                        DeepChildRecords.Add(rec as TreeData);
-                                    }
-                                }
-                                AppendChildren(dm, DeepChildRecords, Child, GroupData, data);
-                                if (Child.IsExpanded)
-                                {
-                                    index += DeepChildRecords.Count;
+                                    DeepChildRecords.Add(rec as TreeData);
                                 }
                             }
-                        }
+                            if (dm.Search != null && dm.Search.Count > 0) // searching the child records
+                            {
+                                IEnumerable ChildSearch = DeepChildRecords;
+                                ChildSearch = operation.PerformSearching(ChildSearch, dm.Search);
+                                DeepChildRecords = new List<TreeData>();
+                                foreach (var rec in ChildSearch)
+                                {
+                                    DeepChildRecords.Add(rec as TreeData);
+                                }
+                            }
+                            AppendChildren(dm, DeepChildRecords, Child, GroupData, data);
+                            if (Child.IsExpanded)
+                            {
+                                index += DeepChildRecords.Count;
+                            }
+                          }
+                        
                     }
                 }
             }
@@ -255,26 +261,28 @@ namespace SyncfusionAngularASPNETMVC.Controllers
                 if (tree.Count == 0)
                 {
                     int root = 0;
-                    for (var t = 1; t <= 5; t++)
+                    for (var t = 1; t <=3; t++)
                     {
                         Random ran = new Random();
                         string math = (ran.Next() % 3) == 0 ? "High" : (ran.Next() % 2) == 0 ? "Release Breaker" : "Critical";
                         string progr = (ran.Next() % 3) == 0 ? "Started" : (ran.Next() % 2) == 0 ? "Open" : "In Progress";
                         root++;
                         int rootItem = root;
+
+                        bool flags = t == 1 ? false : true;
                         tree.Add(new TreeData() { TaskID = rootItem, TaskName = "Parent task " + rootItem.ToString(), isParent = true, IsExpanded = true, ParentValue = null, Duration = ran.Next(1, 50) });
                         int parent = root;
-                        for (var d = 0; d < 3; d++)
+                        for (var d = 0; d < 2; d++)
                         {
                             root++;
                             string value = ((parent + 1) % 3 == 0) ? "Low" : "Critical";
                             int par = parent + 1;
                             progr = (ran.Next() % 3) == 0 ? "In Progress" : (ran.Next() % 2) == 0 ? "Open" : "Validated";
                             int iD = root;
-                            bool flag= (ran.Next() % 2) == 0 ? false : true;
-                             tree.Add(new TreeData() { TaskID = iD, TaskName = "Child task " + iD.ToString(), isParent = true, IsExpanded = true, ParentValue = rootItem, Duration = ran.Next(1, 50) });
+                            bool flag=  iD == 9 ? true : false;
+                             tree.Add(new TreeData() { TaskID = iD, TaskName = "Child task " + iD.ToString(), isParent = true, IsExpanded = flag, ParentValue = rootItem, Duration = ran.Next(1, 50) });
                             int subparent = root;
-                            for (var c = 0; c < 3; c++)
+                            for (var c = 0; c <2; c++)
                             {
                                 root++;
                                 string val = ((subparent + c + 1) % 3 == 0) ? "Low" : "Critical";
